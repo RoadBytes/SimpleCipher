@@ -1,6 +1,8 @@
 # encodes and decodes messages with key that provides shifts
 class Cipher
   attr_accessor :key
+  ENCODE = 1
+  DECODE = -1
 
   def initialize(key = random_key)
     raise ArgumentError, 'Only lowercase letters' if invalid_key(key)
@@ -8,21 +10,15 @@ class Cipher
   end
 
   def encode(string)
-    extend_key(string)
-
-    string.chars.map { |char| letter_to_number(char) }
-          .each_with_index
-          .map { |number, index| number + letter_to_number(key[index]) }
-          .map { |number| number_to_letter(number) }.join
+    string.chars.map.each_with_index do |char, index|
+      encode_letter(char, key[mod_index(index)])
+    end.join
   end
 
   def decode(string)
-    extend_key(string)
-
-    string.chars.map { |char| letter_to_number(char) }
-          .each_with_index
-          .map { |number, index| number - letter_to_number(key[index]) }
-          .map { |number| number_to_letter(number) }.join
+    string.chars.map.each_with_index do |char, index|
+      decode_letter(char, key[mod_index(index)])
+    end.join
   end
 
   private
@@ -32,31 +28,36 @@ class Cipher
     (1..100).map { ('a'..'z').to_a.sample }.join
   end
 
+  def encode_letter(letter, shift_letter)
+    shift(letter, shift_letter, ENCODE)
+  end
+
+  def decode_letter(letter, shift_letter)
+    shift(letter, shift_letter, DECODE)
+  end
+
+  def shift(letter, shift_letter, direction)
+    shift_distance = letter_to_number(shift_letter)
+    new_value = letter_to_number(letter) + direction * shift_distance
+    number_to_letter(new_value)
+  end
+
   def letter_to_number(letter)
     letter.downcase.ord - 'a'.ord
   end
 
   def number_to_letter(number)
-    reduced_number = number % 26
+    if number < 0
+      number += 26 until number > 0
+    elsif number > 0
+      number %= 26
+    end
 
-    ('a'.ord + reduced_number).chr
+    ('a'.ord + number).chr
   end
 
-  def shift(number, size)
-    if size < 0
-      (number + (26 + size)) % 26
-    else
-      (number + size) % 26
-    end
-  end
-
-  def extend_key(string)
-    extended_key = key
-    loop do
-      break if extended_key.size > string.size
-      extended_key += key
-    end
-    @key = extended_key
+  def mod_index(index)
+    index % key.size
   end
 
   def invalid_key(key)
